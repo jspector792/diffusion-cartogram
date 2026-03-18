@@ -25,6 +25,9 @@ venv/
 ENV/
 env/
 
+#README (different version for github)
+README.md
+
 # IDE
 .vscode/
 .idea/

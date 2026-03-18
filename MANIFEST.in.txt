@@ -1,0 +1,23 @@
+# Include essential files
+include README.md
+include LICENSE
+include CHANGELOG.md
+
+# Include package code
+recursive-include pyVDERM *.py
+
+# Exclude examples, tests, and large files
+prune examples
+prune tests
+global-exclude *.stl
+global-exclude *.obj
+global-exclude *.ply
+global-exclude *.xyz
+global-exclude *.gif
+global-exclude *.mp4
+global-exclude *.png
+global-exclude *.jpg
+global-exclude .git*
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude .DS_Store

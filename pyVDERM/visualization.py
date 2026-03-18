@@ -299,6 +299,9 @@ def animate_surface_deformation(export_folder='vderm_exports',
     
     # Load first frame to determine subsample indices
     pos_first, norm_first, dense_first = read_xyz(files[0])
+
+    min_dens = min(dense_first)
+    max_dens = max(dense_first)
     
     # Determine subsample indices 
     if subsample and len(pos_first) > subsample:
@@ -312,6 +315,7 @@ def animate_surface_deformation(export_folder='vderm_exports',
     # Load all data
     all_points = []
     all_normals = []
+    all_dens = []
     
     for f in tqdm(files, desc="Loading data"):
         pts, norms, dens = read_xyz(f)
@@ -320,9 +324,11 @@ def animate_surface_deformation(export_folder='vderm_exports',
         if subsample_indices is not None:
             pts = pts[subsample_indices]
             norms = norms[subsample_indices]
+            dens = dens[subsample_indices]
         
         all_points.append(pts)
         all_normals.append(norms)
+        all_dens.append(dens)
     
     # Get global bounds
     all_pts = np.vstack(all_points)
@@ -342,10 +348,12 @@ def animate_surface_deformation(export_folder='vderm_exports',
         
         points = all_points[frame]
         normals = all_normals[frame]
+        densities = all_dens[frame]
         
         # Plot surface
-        ax.scatter(points[:, 0], points[:, 1], points[:, 2],
-                  c='dodgerblue', s=1, alpha=alpha)
+        box = ax.scatter(points[:, 0], points[:, 1], points[:, 2],
+                  c=densities,cmap='viridis', s=1, alpha=alpha,
+                  vmin=min_dens,vmax=max_dens)
         
         # Optionally show normals
         if show_normals:
@@ -380,6 +388,14 @@ def animate_surface_deformation(export_folder='vderm_exports',
             ax.set_title(f'Surface: Iteration {iter_num}', fontsize=14)
         
         return ax,
+
+    # initial frame to set up colorbar
+
+    box = ax.scatter(pos_first[:, 0], pos_first[:, 1], pos_first[:, 2],
+                  c=dense_first,cmap='viridis', s=1, alpha=alpha,
+                  vmin=min_dens,vmax=max_dens)
+
+    cbar = plt.colorbar(box, ax=ax, label='Density', shrink=0.5)
     
     # Create animation
     print(f"Creating animation with {fps} fps...")
