@@ -4,131 +4,165 @@
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Volumetric Density-Equalizing Reference Map - A Python implementation of the VDERM algorithm for 3D shape deformation.
+Volumetric Density-Equalizing Reference Map — a Python implementation of the VDERM algorithm for **3D shape deformation** and (new in v2.0) **2D cartogram generation** from GeoJSON / Shapefile inputs.
 
-![Alt Text](https://github.com/jspector792/pyVDERM/blob/main/examples/cube.gif)
+<table>
+  <tr>
+    <td align="center"><b>3-D shape deformation (cube)</b></td>
+    <td align="center"><b>2-D cartogram (2×2 grid)</b></td>
+  </tr>
+  <tr>
+    <td><img src="examples/cube.gif"/></td>
+    <td><img src="examples/square.gif"/></td>
+  </tr>
+</table>
 
 ## Overview
 
 pyVDERM implements the Volumetric Density-Equalizing Reference Map (VDERM) method by [Choi & Rycroft (2020)](https://link.springer.com/article/10.1007/s10915-021-01411-4). VDERM is a 3D generalization of the diffusion-based cartogram method, enabling volume-preserving deformations of 3D objects based on prescribed density distributions.
 
+v2.0 extends this to **2D** using the same diffusion-advection process — just one spatial dimension removed — making 2D cartograms straightforward to produce from standard geographic files (GeoJSON, Shapefile, GeoTIFF).
+
 ### Applications
 
 - 3D data visualization and cartograms
+- **2D geographic cartograms** from GeoJSON / Shapefiles (new in v2.0)
 - Adaptive mesh refinement
 - Shape modeling and morphing
 
 ### Key Features
 
-- Fast regular grid interpolation
-- Comprehensive visualization tools with matplotlib animations
-- Flexible export options (XYZ, STL, VTK for ParaView)
-- Optional mesh support via PyMeshLab
-- Progress tracking and intermediate state exports
+- **3D**: Fast regular grid interpolation, XYZ / STL / VTK export, optional PyMeshLab mesh support
+- **2D (new)**: GeoJSON and Shapefile input, GeoTIFF built-in densities, 2D heatmap / scatter visualization
+- Comprehensive matplotlib animations for both pipelines
+- Progress tracking with intermediate state exports
 - Automatic grid sizing with customizable padding
 
 ## Installation
 
-### Basic Installation (Point Cloud Operations Only)
+### Base / lite (no optional dependencies)
 ```bash
 pip install pyVDERM
 ```
 
-This installs the core VDERM algorithm with support for `.xyz` point cloud files.
-
-### With Mesh Support
-
-For full functionality including mesh I/O and Poisson reconstruction:
+### With 2-D geographic I/O (GeoJSON, Shapefile, GeoTIFF)
 ```bash
-pip install pyVDERM[mesh]
+pip install pyVDERM[2D]
 ```
 
-This adds PyMeshLab for reading mesh files (STL, OBJ, PLY) and reconstructing meshes from point clouds.
-
-### Development Installation
+### With 3-D mesh support (STL, OBJ, Poisson reconstruction)
 ```bash
-git clone https://github.com/yourusername/pyVDERM.git
+pip install pyVDERM[3D]
+```
+
+### Full installation
+```bash
+pip install pyVDERM[all]
+```
+
+### Development
+```bash
+git clone https://github.com/jspector792/pyVDERM.git
 cd pyVDERM
-pip install -e .[mesh]
+pip install -e .[all]
 ```
 
-## Quick Start
+## Quick Start — 3D
+
 ```python
 import pyVDERM as vd
 import numpy as np
 
-# 1. Load a mesh and create surface point cloud
 surface_points, normals = vd.create_pcd('mesh.stl', n_pts=25000)
-
-# 2. Create computational grid (automatically sized)
 params = vd.make_initial_grid(surface_points, max_points=32768)
+grid = vd.VDERMGrid(params['shape'], params['h'], params['min_bounds'])
 
-# 3. Initialize VDERM grid
-vderm_grid = vd.VDERMGrid(
-    shape=params['shape'],
-    h=params['h'],
-    min_bounds=params['min_bounds']
-)
-
-# 4. Define density field (controls the deformation)
 def my_density(x, y, z):
     r = np.sqrt((x - 1.5)**2 + (y - 1.5)**2 + (z - 1.5)**2)
     return 1.0 + 3.0 * np.exp(-5 * r**2)
 
-vderm_grid.set_density(my_density)
+grid.set_density(my_density)
+result = vd.run_VDERM(grid, n_max=100, max_eps=0.02)
 
-# 5. Run deformation
-deformed_grid = vd.run_VDERM(vderm_grid, n_max=100, max_eps=0.02)
-
-# 6. Interpolate deformation to surface
 final_surface = vd.interpolate_to_surface(
-    surface_points,
-    params,
-    deformed_grid.get_displacement_field()
+    surface_points, params, result.get_displacement_field()
 )
+vd.export_mesh_file('deformed_mesh.stl', final_surface)
+```
 
-# 7. Export results
-vd.export_mesh_file('deformed_mesh.stl', final_surface, depth=8)
+## Quick Start — 2D Cartogram
+
+```python
+import pyVDERM as vd
+
+# Load geographic boundary (GeoJSON or Shapefile)
+pts, crs = vd.read_geojson('countries.geojson')
+
+# Create grid and set density from a GeoTIFF
+params = vd.make_initial_grid_2d(pts, max_points=16384)
+grid = vd.VDERMGrid2D(params['shape'], params['h'], params['min_bounds'])
+vd.density_from_geotiff(grid, 'population.tif')
+
+# run_VDERM works for both 2D and 3D grids
+result = vd.run_VDERM(grid, n_max=200, max_eps=0.02)
+
+deformed = vd.interpolate_to_map_2d(
+    pts, params, result.get_displacement_field()
+)
+dens = vd.interpolate_densities_2d(pts, result)
+vd.plot_map_before_after(pts, deformed, densities=dens,
+                         title='Population Cartogram')
 ```
 
 ## Examples
 
 Detailed Jupyter notebook examples are available in the `examples/` directory:
 
-- **01_quickStart.ipynb**: Basic workflow and concepts
+- **01_quickStart.ipynb**: Basic 3-D workflow and concepts
 - **02_boundaryConditions.ipynb**: Understanding and using boundary conditions
 - **03_densityFields.ipynb**: Different density functions and their effects
-- **04_tracking.ipynb**: Creating animations and tracking a deformation on a non-trivial object
-- **05_pyVDERMlite.ipynb**: Point-cloud-only workflow without mesh dependencies
+- **04_tracking.ipynb**: Creating animations and tracking a 3-D deformation
+- **05_pyVDERMlite.ipynb**: 3-D point-cloud workflow without mesh dependencies
+- **06_2D_quickStart.ipynb**: 2-D quick start — 2×2 grid from scratch (base install)
+- **07_worldCartogram.ipynb**: World population cartogram from GeoJSON / Shapefile / GeoTIFF (`pip install pyVDERM[2D]`)
+- **08_2D_lite.ipynb**: 2-D lite mode — XY CSV files only (base install)
 
 ## File Formats
 
-### XYZ Format (Space-delimited text)
+### 3D — XYZ (space-delimited text)
 
-pyVDERM uses flexible XYZ files that automatically adapt based on available data:
 ```
-# Positions only (3 columns)
-x y z
-
-# Positions + densities (4 columns)
-x y z rho
-
-# Positions + normals/velocities (6 columns)
-x y z n_x n_y n_z
-
-# Complete (7 columns)
-x y z n_x n_y n_z rho
+x y z              # positions only
+x y z rho          # + density
+x y z nx ny nz     # + normals / velocities
+x y z nx ny nz rho # complete
 ```
 
-Functions `read_xyz()` and `write_xyz()` automatically detect and handle these formats.
+`read_xyz()` and `write_xyz()` detect and handle all variants automatically.
+
+### 2D — CSV (space-delimited text)
+
+```
+x y      # positions only
+x y rho  # + density
+```
+
+`read_csv_2d()` and `write_csv_2d()` handle both variants.  
+Geographic inputs: **GeoJSON** and **Shapefile** (via geopandas), **GeoTIFF** density rasters (via rasterio).
 
 ## Tips and Best Practices
 
 ### Choosing Grid Resolution
 
-- **Small objects or quick tests**: 15,000-30,000 points (20-30³)
-- **Standard resolution**: 30,000-50,000 points (30-35³)
-- **High quality**: 100,000-250,000 points (45-60³)
+**3D:**
+- Quick test: 15,000–30,000 points (20–30³)
+- Standard: 30,000–50,000 points (30–35³)
+- High quality: 100,000–250,000 points (45–60³)
+
+**2D:**
+- Quick test / small regions: 1,000–4,000 points (32²–64²)
+- Standard cartogram: 4,000–16,000 points (64²–128²)
+- High quality: 16,000–65,000 points (128²–256²)
 
 Higher resolution gives smoother results but increases computation time.
 
@@ -165,8 +199,9 @@ For most cases, automatic timestep selection works well.
 - pandas >= 1.3
 - tqdm >= 4.60
 
-### Optional (but recommended)
-- pymeshlab >= 2023.12 (for mesh I/O and Poisson reconstruction)
+### Optional
+- pymeshlab >= 2023.12 — 3-D mesh I/O and Poisson reconstruction (`pip install pyVDERM[3D]`)
+- geopandas >= 0.12, rasterio >= 1.3, shapely >= 2.0 — 2-D geographic I/O (`pip install pyVDERM[2D]`)
 
 ## Citation
 

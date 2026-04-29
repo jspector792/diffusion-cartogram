@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyVDERM"
-version = "0.1.5"
-description = "Volumetric Density-Equalizing Reference Map implementation"
-readme = "README.md"
+version = "2.0.0"
+description = "Volumetric Density-Equalizing Reference Map — 3D shape deformation and 2D cartogram generation"
+readme = "README_pypi.md"
 requires-python = ">=3.8"
 license = {text = "MIT"}
 authors = [
     {name = "Jonah Spector", email = "spector.jo@northeastern.edu"}
 ]
-keywords = ["cartogram", "deformation", "3d", "visualization", "density-equalizing", "vderm"]
+keywords = ["cartogram", "deformation", "3d", "2d", "visualization", "density-equalizing", "vderm", "geojson", "shapefile"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -35,7 +35,21 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-mesh = ["pymeshlab>=2023.12"]
+# Full 2D pipeline: GeoJSON, Shapefile, GeoTIFF I/O
+"2D" = [
+    "geopandas>=0.12",
+    "rasterio>=1.3",
+    "shapely>=2.0",
+]
+# Full 3D pipeline: mesh I/O and Poisson reconstruction
+"3D" = ["pymeshlab>=2023.12"]
+# Everything
+all = [
+    "geopandas>=0.12",
+    "rasterio>=1.3",
+    "shapely>=2.0",
+    "pymeshlab>=2023.12",
+]
 
 [project.urls]
 Homepage = "https://github.com/jspector792/pyVDERM"

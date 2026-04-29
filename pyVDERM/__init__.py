@@ -1,32 +1,35 @@
 """
-VDERM: Volumetric Density-Equalizing Reference Map
+pyVDERM: Volumetric Density-Equalizing Reference Map
 
-A Python implementation of the VDERM algorithm for 3D shape deformation
-based on the method by Choi & Rycroft (2020).
+Python implementation of the VDERM algorithm for 3-D shape deformation
+(Choi & Rycroft 2020) and — new in v2.0 — 2-D density-equalizing
+cartogram deformation from GeoJSON / Shapefile inputs.
 
-Basic Usage
------------
->>> import vderm
->>> 
->>> # Load mesh and create surface point cloud
->>> surface_pts, normals = vderm.create_pcd('mesh.stl', n_pts=25000)
->>> 
->>> # Create computational grid
->>> grid, params = vderm.make_initial_grid(surface_pts, max_points=32768)
->>> 
->>> # Set up VDERM grid and density field
->>> vderm_grid = vderm.VDERMGrid(params['shape'], params['h'], params['min_bounds'])
->>> vderm_grid.set_density(my_density_function)
->>> 
->>> # Run deformation
->>> final_grid = vderm.run_VDERM(vderm_grid, n_max=100, max_eps=0.02)
->>> 
->>> # Interpolate to surface and export
->>> final_surface = final_grid.interpolate_to_points(surface_pts)
->>> vderm.export_mesh('output.stl', final_surface, normals)
+3-D Quick Start
+---------------
+>>> import pyVDERM as vd
+>>>
+>>> surface_pts, normals = vd.create_pcd('mesh.stl', n_pts=25000)
+>>> gp = vd.make_initial_grid(surface_pts, max_points=32768)
+>>> grid = vd.VDERMGrid(gp['shape'], gp['h'], gp['min_bounds'])
+>>> grid.set_density(my_density_function)
+>>> result = vd.run_VDERM(grid, n_max=100, max_eps=0.02)
+>>> deformed = vd.interpolate_to_surface(surface_pts, gp,
+...                                      result.get_displacement_field())
+
+2-D Quick Start
+---------------
+>>> pts, crs = vd.read_geojson('countries.geojson')
+>>> gp = vd.make_initial_grid_2d(pts, max_points=16384)
+>>> grid = vd.VDERMGrid2D(gp['shape'], gp['h'], gp['min_bounds'])
+>>> vd.density_from_geotiff(grid, 'population.tif')
+>>> result = vd.run_VDERM(grid)          # run_VDERM works for both 2D and 3D
+>>> deformed = vd.interpolate_to_map_2d(pts, gp,
+...                                     result.get_displacement_field())
+>>> vd.plot_map_2d(deformed, title='Population Cartogram')
 """
 
-__version__ = '0.1.5'
+__version__ = '2.0.0'
 
 # Core VDERM classes and algorithms
 from .core import (
@@ -86,8 +89,6 @@ __all__ = [
     # I/O
     'write_xyz',
     'read_xyz',
-    'write_xyz_underlying',
-    'read_xyz_underlying',
     'create_pcd',
     'export_mesh_file',
     'export_mesh_vtk',
@@ -118,3 +119,84 @@ if _has_visualization:
         'plot_pcd',
         'interactive_pcd_plot',
     ])
+
+# ── 2-D API ──────────────────────────────────────────────────────────────────
+
+# 2-D core classes and algorithms
+from .core_2d import (
+    VDERMGrid2D,
+    run_VDERM_2d_with_tracking,
+)
+
+# 2-D grid utilities
+from .core_2d import (
+    compute_grid_dimensions_2d,
+    make_initial_grid_2d,
+    print_grid_info_2d,
+)
+
+# 2-D interpolation
+from .core_2d import (
+    interpolate_densities_2d,
+    interpolate_velocities_2d,
+    interpolate_to_map_2d,
+)
+
+# 2-D I/O (always available)
+from .core_2d import (
+    write_csv_2d,
+    read_csv_2d,
+    HAS_GEOPANDAS,
+    HAS_RASTERIO,
+    read_geojson,
+    read_shapefile,
+    read_geotiff,
+    density_from_geotiff,
+)
+
+# 2-D visualization (optional)
+try:
+    from .visualization_2d import (
+        plot_map_2d,
+        plot_density_field_2d,
+        plot_map_before_after,
+        animate_map_deformation_2d,
+        animate_grid_deformation_2d,
+        plot_density_evolution_2d,
+    )
+    _has_visualization_2d = True
+except ImportError:
+    _has_visualization_2d = False
+
+__all__ += [
+    # 2-D classes and algorithms
+    'VDERMGrid2D',
+    'run_VDERM_2d_with_tracking',
+    # 2-D grid utilities
+    'compute_grid_dimensions_2d',
+    'make_initial_grid_2d',
+    'print_grid_info_2d',
+    # 2-D interpolation
+    'interpolate_densities_2d',
+    'interpolate_velocities_2d',
+    'interpolate_to_map_2d',
+    # 2-D I/O
+    'write_csv_2d',
+    'read_csv_2d',
+    'HAS_GEOPANDAS',
+    'HAS_RASTERIO',
+    'read_geojson',
+    'read_shapefile',
+    'read_geotiff',
+    'density_from_geotiff',
+]
+
+if _has_visualization_2d:
+    __all__ += [
+        'plot_map_2d',
+        'plot_density_field_2d',
+        'plot_map_before_after',
+        'animate_map_deformation_2d',
+        'animate_grid_deformation_2d',
+        'plot_density_evolution_2d',
+    ]

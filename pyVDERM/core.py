@@ -16,7 +16,7 @@ def _require_pymeshlab(function_name):
         raise ImportError(
             f"{function_name} requires pymeshlab for mesh operations.\n"
             f"Install with: pip install pymeshlab\n"
-            f"Or install vderm with mesh support: pip install pyVDERM[mesh]"
+            f"Or install with 3-D mesh support: pip install pyVDERM[3D]"
         )
 
 def create_pcd(mesh_path, n_pts=25_000, sampling_method='poisson'):
@@ -794,7 +794,7 @@ def run_VDERM_with_tracking(grid, surface_points,
         raise ImportError(
             "Mesh export requires pymeshlab.\n"
             "Install with: pip install pymeshlab\n"
-            "Or install vderm with mesh support: pip install vderm[mesh]"
+            "Or install with 3-D mesh support: pip install pyVDERM[3D]"
         )
     
     # Validate mesh format

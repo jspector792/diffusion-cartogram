@@ -1,4 +1,4 @@
-# Python
+# ── Python build artifacts ────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
 *$py.class
@@ -20,41 +20,65 @@ wheels/
 .installed.cfg
 *.egg
 
-# Virtual environments
+# ── Virtual environments ──────────────────────────────────────────────────────
 venv/
 ENV/
 env/
 
-#README (different version for github)
-README.md
-
-# IDE
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS
+# ── OS ────────────────────────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
 
-# VDERM specific
+# ── PyPI README ───────────────────────────────────────────────────────────────
+# README.md is the GitHub README — committed.
+# README_pypi.md is consumed only by the build backend (pyproject.toml
+# readme = "README_pypi.md") and should not appear in the repository.
+README_pypi.md
+
+# ── VDERM runtime outputs ─────────────────────────────────────────────────────
+# Directories written by run_VDERM_with_tracking / run_VDERM_2d_with_tracking
 vderm_exports/
+vderm_2d_exports/
 paraview*/
-*.xyz
-*.stl
-*.vtk
 surface.gif
 grid.gif
-*.png
-*.mp4
 
-# Example outputs
+# ── Example outputs ───────────────────────────────────────────────────────────
+# The following input files are committed alongside the notebooks:
+#   3D inputs  : cube.stl  cube.xyz  Armadillo.stl
+#   2D inputs  : ne_50m_admin_0_countries.{json,shp,shx}
+#                gpw_v4_population_density_rev11_2020_1_deg.tif
+#   README GIFs: cube.gif  square.gif  (kept via negation rules below)
+#
+# Anything produced when notebooks run is ignored.
+
+# Tracking export sub-directories
 examples/vderm_exports/
+examples/vderm_2d_exports/
 examples/my_deformation/
 examples/paraview*/
-examples/**/*.gif
-examples/**/*.mp4
-examples/**/deformed_*
-examples/**/output_*
+
+# Generated CSV outputs (2D pipeline — lite and geo workflows)
+examples/*.csv
+
+# Generated point-cloud / mesh outputs (3D pipeline)
+examples/deformed_*.xyz
+examples/deformed_*.stl
+examples/deformed_*.vtk
+
+# Animation and image outputs — keep the two README demo GIFs
+examples/*.gif
+!examples/cube.gif
+!examples/square.gif
+examples/*.mp4
+examples/*.png
+
+# paper folder (will be committed eventually, for now not ready)
+paper/

@@ -11,21 +11,16 @@ authors:
   - name: Jonah Spector
     orcid: 0000-0002-5128-9129
     affiliation: 1
-  - name: Gary P. T. Choi
-    orcid: 0000-0001-5407-9111
-    affiliation: 2
   - name: Albert László Barabási
     orcid: 0000-0002-4028-3522
-    affiliation: "1, 3, 4"
+    affiliation: "1, 2, 3"
 affiliations:
   - name: Network Science Institute, Northeastern University, USA
     index: 1
-  - name: Department of Mathematics, The Chinese University of Hong Kong, Hong Kong
-    index: 2
   - name: Department of Medicine, Brigham and Women's Hospital, Harvard Medical School, USA
-    index: 3
+    index: 2
   - name: Department of Network and Data Science, Central European University
-    index: 4
+    index: 3
 date: 11 March 2026
 bibliography: paper.bib
 ---
@@ -54,7 +49,7 @@ mesh loading and density field design through to export and visualization.
 Density-equalizing maps have proven valuable across data visualization, medical
 imaging, and computational geometry, yet accessible software implementations have
 historically been limited to two-dimensional domains. The original VDERM method
-[@choi2021volumetric] was demonstrated using a MATLAB prototype; no open,
+[@choi2021volumetric] was demonstrated using a C++ prototype; no open,
 general-purpose implementation for 3D density-equalizing deformations existed in Python
 prior to `pyVDERM`.
 
@@ -63,7 +58,7 @@ with a large ecosystem of numerical, visualization, and mesh processing librarie
 Researchers wishing to apply 3D density-equalizing deformations to their data—whether
 for volumetric cartogram creation, adaptive remeshing, or shape morphing—currently have
 no suitable Python tool available. They must either implement the algorithm from scratch
-or use the original MATLAB code, which limits accessibility, reproducibility, and
+or use the original C++ code, which limits accessibility, reproducibility, and
 integration with modern scientific Python workflows.
 
 `pyVDERM` addresses this gap by providing a well-documented, tested, and pip-installable
@@ -146,7 +141,6 @@ implementation.
 # Acknowledgements
 
 The authors thank Gary P. T. Choi and Chris H. Rycroft for the original development of
-the VDERM algorithm and for approving this Python implementation. [ADDITIONAL
-ACKNOWLEDGEMENTS / FUNDING HERE]
+the VDERM algorithm and for approving this Python implementation. Work by J.S. was supported in part by the National Institute of Health grant number T32 HL007427
 
 # References
