@@ -3,7 +3,7 @@ Tests for core VDERM functionality.
 """
 import pytest
 import numpy as np
-import pyVDERM as vd
+import diffusion_cartogram as vd
 
 
 class TestVDERMGrid:

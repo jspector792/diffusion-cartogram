@@ -3,12 +3,12 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyVDERM"
-version = "2.0.0"
+name = "diffusion-cartogram"
+version = "0.2.0"
 description = "Volumetric Density-Equalizing Reference Map — 3D shape deformation and 2D cartogram generation"
 readme = "README_pypi.md"
 requires-python = ">=3.8"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Jonah Spector", email = "spector.jo@northeastern.edu"}
 ]
@@ -17,7 +17,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Visualization",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
@@ -51,7 +50,10 @@ all = [
     "pymeshlab>=2023.12",
 ]
 
+[tool.setuptools.packages.find]
+include = ["diffusion_cartogram*"]
+
 [project.urls]
-Homepage = "https://github.com/jspector792/pyVDERM"
-Repository = "https://github.com/jspector792/pyVDERM"
-Issues = "https://github.com/jspector792/pyVDERM/issues"
+Homepage = "https://github.com/jspector792/diffusion-cartogram"
+Repository = "https://github.com/jspector792/diffusion-cartogram"
+Issues = "https://github.com/jspector792/diffusion-cartogram/issues"

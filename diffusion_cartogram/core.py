@@ -16,7 +16,7 @@ def _require_pymeshlab(function_name):
         raise ImportError(
             f"{function_name} requires pymeshlab for mesh operations.\n"
             f"Install with: pip install pymeshlab\n"
-            f"Or install with 3-D mesh support: pip install pyVDERM[3D]"
+            f"Or install with 3-D mesh support: pip install diffusion-cartogram[3D]"
         )
 
 def create_pcd(mesh_path, n_pts=25_000, sampling_method='poisson'):
@@ -794,7 +794,7 @@ def run_VDERM_with_tracking(grid, surface_points,
         raise ImportError(
             "Mesh export requires pymeshlab.\n"
             "Install with: pip install pymeshlab\n"
-            "Or install with 3-D mesh support: pip install pyVDERM[3D]"
+            "Or install with 3-D mesh support: pip install diffusion-cartogram[3D]"
         )
     
     # Validate mesh format
@@ -1197,6 +1197,11 @@ def export_mesh_file(filename, deformed_pcd, depth=8, fulldepth=5, scale=1.1):
     
     Normal estimation uses k=20 nearest neighbors with 2 smoothing iterations.
     Adjust these in the code if needed for your specific geometry.
+
+    macOS + conda users may encounter an OpenMP conflict (OMP: Error #15) when
+    this function is called, due to pymeshlab's bundled libomp conflicting with
+    conda-forge's numpy/scipy. See the Known Issues section of the README for
+    the fix. 
     
     Examples
     --------
@@ -1256,6 +1261,12 @@ def export_mesh_vtk(filepath, deformed_pcd, densities, depth=8):
     -------
     mesh : pymeshlab Mesh object
         The reconstructed mesh
+
+    Note:
+        macOS + conda users may encounter an OpenMP conflict (OMP: Error #15) when
+        this function is called, due to pymeshlab's bundled libomp conflicting with
+        conda-forge's numpy/scipy. See the Known Issues section of the README for
+        the fix. 
     """
     _require_pymeshlab('create_pcd')
     

@@ -4,7 +4,7 @@ include LICENSE
 include CHANGELOG.md
 
 # Include package code
-recursive-include pyVDERM *.py
+recursive-include diffusion_cartogram *.py
 
 # Exclude examples, tests, and large files
 prune examples

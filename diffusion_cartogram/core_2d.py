@@ -34,7 +34,7 @@ def _require_geopandas(fname):
     if not HAS_GEOPANDAS:
         raise ImportError(
             f"{fname} requires geopandas for geographic file I/O.\n"
-            "Install with: pip install pyVDERM[2D]"
+            "Install with: pip install diffusion-cartogram[2D]"
         )
 
 
@@ -42,7 +42,7 @@ def _require_rasterio(fname):
     if not HAS_RASTERIO:
         raise ImportError(
             f"{fname} requires rasterio for GeoTIFF support.\n"
-            "Install with: pip install pyVDERM[2D]"
+            "Install with: pip install diffusion-cartogram[2D]"
         )
 
 
@@ -462,7 +462,7 @@ def read_geojson(filepath):
     For Polygon / MultiPolygon features the exterior ring vertices are
     extracted.  Point and LineString features are also supported.
 
-    Requires geopandas (``pip install pyVDERM[2D]``).
+    Requires geopandas (``pip install diffusion-cartogram[2D]``).
 
     Parameters
     ----------
@@ -490,7 +490,7 @@ def read_shapefile(filepath):
     """
     Extract a 2-D point array from a Shapefile (.shp).
 
-    Requires geopandas (``pip install pyVDERM[2D]``).
+    Requires geopandas (``pip install diffusion-cartogram[2D]``).
 
     If the .shx index file is missing, it is reconstructed automatically
     via GDAL's ``SHAPE_RESTORE_SHX`` option (geometry-only recovery).
@@ -534,7 +534,7 @@ def read_geotiff(filepath, band=1):
     """
     Read a GeoTIFF raster band and return data plus coordinate arrays.
 
-    Requires rasterio (``pip install pyVDERM[2D]``).
+    Requires rasterio (``pip install diffusion-cartogram[2D]``).
 
     Parameters
     ----------

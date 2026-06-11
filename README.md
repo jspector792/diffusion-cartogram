@@ -1,6 +1,6 @@
-# pyVDERM 
-[![PyPI version](https://badge.fury.io/py/pyVDERM.svg)](https://badge.fury.io/py/pyVDERM)
-[![GitHub release](https://img.shields.io/github/v/release/jspector792/pyVDERM)](https://github.com/jspector792/pyVDERM/releases)
+# diffusion-cartogram 
+[![PyPI version](https://badge.fury.io/py/diffusion-cartogram.svg)](https://badge.fury.io/py/diffusion-cartogram)
+[![GitHub release](https://img.shields.io/github/v/release/jspector792/diffusion-cartogram)](https://github.com/jspector792/diffusion-cartogram/releases)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -19,7 +19,7 @@ Volumetric Density-Equalizing Reference Map — a Python implementation of the V
 
 ## Overview
 
-pyVDERM implements the Volumetric Density-Equalizing Reference Map (VDERM) method by [Choi & Rycroft (2020)](https://link.springer.com/article/10.1007/s10915-021-01411-4). VDERM is a 3D generalization of the diffusion-based cartogram method, enabling volume-preserving deformations of 3D objects based on prescribed density distributions.
+diffusion-cartogram implements the Volumetric Density-Equalizing Reference Map (VDERM) method by [Choi & Rycroft (2020)](https://link.springer.com/article/10.1007/s10915-021-01411-4). VDERM is a 3D generalization of the diffusion-based cartogram method, enabling volume-preserving deformations of 3D objects based on prescribed density distributions.
 
 v2.0 extends this to **2D** using the same diffusion-advection process — just one spatial dimension removed — making 2D cartograms straightforward to produce from standard geographic files (GeoJSON, Shapefile, GeoTIFF).
 
@@ -42,35 +42,35 @@ v2.0 extends this to **2D** using the same diffusion-advection process — just 
 
 ### Base / lite (no optional dependencies)
 ```bash
-pip install pyVDERM
+pip install diffusion-cartogram
 ```
 
 ### With 2-D geographic I/O (GeoJSON, Shapefile, GeoTIFF)
 ```bash
-pip install pyVDERM[2D]
+pip install diffusion-cartogram[2D]
 ```
 
 ### With 3-D mesh support (STL, OBJ, Poisson reconstruction)
 ```bash
-pip install pyVDERM[3D]
+pip install diffusion-cartogram[3D]
 ```
 
 ### Full installation
 ```bash
-pip install pyVDERM[all]
+pip install diffusion-cartogram[all]
 ```
 
 ### Development
 ```bash
-git clone https://github.com/jspector792/pyVDERM.git
-cd pyVDERM
+git clone https://github.com/jspector792/diffusion-cartogram.git
+cd diffusion-cartogram
 pip install -e .[all]
 ```
 
 ## Quick Start — 3D
 
 ```python
-import pyVDERM as vd
+import diffusion_cartogram as vd
 import numpy as np
 
 surface_points, normals = vd.create_pcd('mesh.stl', n_pts=25000)
@@ -93,7 +93,7 @@ vd.export_mesh_file('deformed_mesh.stl', final_surface)
 ## Quick Start — 2D Cartogram
 
 ```python
-import pyVDERM as vd
+import diffusion_cartogram as vd
 
 # Load geographic boundary (GeoJSON or Shapefile)
 pts, crs = vd.read_geojson('countries.geojson')
@@ -122,9 +122,9 @@ Detailed Jupyter notebook examples are available in the `examples/` directory:
 - **02_boundaryConditions.ipynb**: Understanding and using boundary conditions
 - **03_densityFields.ipynb**: Different density functions and their effects
 - **04_tracking.ipynb**: Creating animations and tracking a 3-D deformation
-- **05_pyVDERMlite.ipynb**: 3-D point-cloud workflow without mesh dependencies
+- **05_diffusion-cartogram_lite.ipynb**: 3-D point-cloud workflow without mesh dependencies
 - **06_2D_quickStart.ipynb**: 2-D quick start — 2×2 grid from scratch (base install)
-- **07_worldCartogram.ipynb**: World population cartogram from GeoJSON / Shapefile / GeoTIFF (`pip install pyVDERM[2D]`)
+- **07_worldCartogram.ipynb**: World population cartogram from GeoJSON / Shapefile / GeoTIFF (`pip install diffusion-cartogram[2D]`)
 - **08_2D_lite.ipynb**: 2-D lite mode — XY CSV files only (base install)
 
 ## File Formats
@@ -190,6 +190,27 @@ If you encounter instability (epsilon becoming very large or negative):
 
 For most cases, automatic timestep selection works well.
 
+## Known issues
+
+### macOS + conda: OpenMP conflict with pymeshlab (3D only)
+
+Users running the 3D reconstruction features (`export_mesh_file`, `export_mesh_vtk`) 
+on macOS in a conda environment may encounter a hard crash:
+```
+OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib already initialized.
+```
+This is caused by a conflict between the OpenMP runtime bundled inside pymeshlab's 
+wheel and the one loaded by conda-forge's numpy/scipy. It is not specific to 
+diffusion-cartogram — it will occur with any package that uses both pymeshlab and 
+conda-forge numpy on macOS.
+
+**Fix:** Replace pymeshlab's bundled `libomp.dylib` with a symlink to conda's. Both 
+are LLVM OpenMP with the same ABI, so this is safe. The file to replace is at 
+`$CONDA_PREFIX/lib/python*/site-packages/pymeshlab/Frameworks/libomp.dylib`. 
+See [this discussion](https://stackoverflow.com/questions/53014306/error-15-initializing-libiomp5-dylib-but-found-libiomp5-dylib-already-initial) for 
+approaches and context. Note that the fix is environment-level and will need to be 
+reapplied if pymeshlab is reinstalled or upgraded.
+
 ## Dependencies
 
 ### Required
@@ -200,8 +221,8 @@ For most cases, automatic timestep selection works well.
 - tqdm >= 4.60
 
 ### Optional
-- pymeshlab >= 2023.12 — 3-D mesh I/O and Poisson reconstruction (`pip install pyVDERM[3D]`)
-- geopandas >= 0.12, rasterio >= 1.3, shapely >= 2.0 — 2-D geographic I/O (`pip install pyVDERM[2D]`)
+- pymeshlab >= 2023.12 — 3-D mesh I/O and Poisson reconstruction (`pip install diffusion-cartogram[3D]`)
+- geopandas >= 0.12, rasterio >= 1.3, shapely >= 2.0 — 2-D geographic I/O (`pip install diffusion-cartogram[2D]`)
 
 ## Citation
 
@@ -232,10 +253,10 @@ If you use this package in academic work, please cite the appropriate original p
 And optionally, this implementation:
 ```bibtex
 @software{vderm2026,
-  title={pyVDERM: A Python implementation of Volumetric Density-Equalizing Reference Map},
+  title={diffusion-cartogram: A Python implementation of Volumetric Density-Equalizing Reference Map},
   author={Jonah Spector},
   year={2026},
-  url={https://github.com/jspector792/pyVDERM}
+  url={https://github.com/jspector792/diffusion-cartogram}
 }
 ```
 

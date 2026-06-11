@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for pyVDERM tests.
+Shared pytest fixtures for diffusion-cartogram tests.
 """
 import pytest
 import numpy as np
@@ -10,14 +10,14 @@ import os
 @pytest.fixture
 def simple_grid():
     """Create a simple 10x10x10 grid for testing."""
-    import pyVDERM as vd
+    import diffusion_cartogram as vd
     return vd.VDERMGrid(shape=(10, 10, 10), h=0.1, min_bounds=[0, 0, 0])
 
 
 @pytest.fixture
 def medium_grid():
     """Create a medium 20x20x20 grid for testing."""
-    import pyVDERM as vd
+    import diffusion_cartogram as vd
     return vd.VDERMGrid(shape=(20, 20, 20), h=0.05, min_bounds=[0, 0, 0])
 
 

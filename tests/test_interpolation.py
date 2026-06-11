@@ -3,7 +3,7 @@ Tests for interpolation functions.
 """
 import pytest
 import numpy as np
-import pyVDERM as vderm
+import diffusion_cartogram as vderm
 
 
 class TestInterpolation:

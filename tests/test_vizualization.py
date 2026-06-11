@@ -4,7 +4,7 @@ Tests for visualization functions.
 import pytest
 import numpy as np
 import os
-import pyVDERM as vd
+import diffusion_cartogram as vd
 
 
 class TestVisualization:

@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.0] - 2026-04-28
+## [0.2.0] - 2026-04-29
 
 ### New: 2D VDERM Pipeline
 
@@ -9,7 +9,7 @@
 - **`make_initial_grid_2d()`** / **`compute_grid_dimensions_2d()`** / **`print_grid_info_2d()`** — 2-D grid utilities mirroring the 3-D equivalents.
 - **`interpolate_to_map_2d()`** / **`interpolate_densities_2d()`** / **`interpolate_velocities_2d()`** — 2-D interpolation from grid to arbitrary point sets.
 
-### New: Geographic I/O (`pip install pyVDERM[2D]`)
+### New: Geographic I/O (`pip install diffusion-cartogram[2D]`)
 
 - **`read_geojson(filepath)`** — extract 2-D point array from GeoJSON (polygon boundaries, point features, line features).
 - **`read_shapefile(filepath)`** — same for Shapefiles.
@@ -28,7 +28,7 @@
 
 ### Packaging
 
-- Version bumped to **2.0.0**.
+- Version bumped to **0.2.0**.
 - New optional dependency group **`[2D]`**: geopandas, rasterio, shapely.
 - New optional dependency group **`[3D]`**: pymeshlab.
 - New optional dependency group **`[all]`**: `[2D]` + `[3D]`.

@@ -1,5 +1,5 @@
 """
-pyVDERM: Volumetric Density-Equalizing Reference Map
+diffusion-cartogram: Volumetric Density-Equalizing Reference Map
 
 Python implementation of the VDERM algorithm for 3-D shape deformation
 (Choi & Rycroft 2020) and — new in v2.0 — 2-D density-equalizing
@@ -7,7 +7,7 @@ cartogram deformation from GeoJSON / Shapefile inputs.
 
 3-D Quick Start
 ---------------
->>> import pyVDERM as vd
+>>> import diffusion_cartogram as vd
 >>>
 >>> surface_pts, normals = vd.create_pcd('mesh.stl', n_pts=25000)
 >>> gp = vd.make_initial_grid(surface_pts, max_points=32768)
@@ -29,7 +29,7 @@ cartogram deformation from GeoJSON / Shapefile inputs.
 >>> vd.plot_map_2d(deformed, title='Population Cartogram')
 """
 
-__version__ = '2.0.0'
+__version__ = '0.2.0'
 
 # Core VDERM classes and algorithms
 from .core import (
