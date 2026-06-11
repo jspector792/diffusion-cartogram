@@ -205,7 +205,7 @@ For most cases, automatic timestep selection works well.
 
 ## Citation
 
-If you use this package in academic work, please cite the original VDERM paper:
+If you use this package in academic work, please cite the appropriate original paper(s):
 ```bibtex
 @article{choi2021volumetric,
   title={Volumetric density-equalizing reference map with applications},
@@ -216,6 +216,17 @@ If you use this package in academic work, please cite the original VDERM paper:
   pages={1--26},
   year={2021},
   publisher={Springer}
+}
+
+@article{gastner2004,
+  title   = {Diffusion-based method for producing density-equalizing maps},
+  author  = {Gastner, Michael T. and Newman, M. E. J.},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {101},
+  number  = {20},
+  pages   = {7499--7504},
+  year    = {2004},
+  doi     = {10.1073/pnas.0400280101}
 }
 ```
 And optionally, this implementation:
@@ -236,8 +247,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Original VDERM algorithm by Gary P.T. Choi and Chris H. Rycroft
 - Based on the diffusion cartogram method by Gastner & Newman (2004)
-
-## Support
-
-- Documentation: [GitHub Wiki](https://github.com/jspector792/pyVDERM/wiki)
-- Issues: [GitHub Issues](https://github.com/jspector792/pyVDERM/issues)
