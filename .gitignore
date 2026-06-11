@@ -80,5 +80,8 @@ examples/*.gif
 examples/*.mp4
 examples/*.png
 
-# paper folder (will be committed eventually, for now not ready)
-paper/
+# paper folder (switching back to committing this)
+# paper/
+
+# pyVDERM pointer package (artifact of rename)
+pyVDERM/

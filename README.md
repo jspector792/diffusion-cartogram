@@ -253,8 +253,8 @@ If you use this package in academic work, please cite the appropriate original p
 And optionally, this implementation:
 ```bibtex
 @software{vderm2026,
-  title={diffusion-cartogram: A Python implementation of Volumetric Density-Equalizing Reference Map},
-  author={Jonah Spector},
+  title={diffusion-cartogram: A Python package for diffusion deformations in 2 and 3 dimensions},
+  author={Jonah Spector and Albert-László Barabási},
   year={2026},
   url={https://github.com/jspector792/diffusion-cartogram}
 }
