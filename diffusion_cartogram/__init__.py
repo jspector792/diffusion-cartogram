@@ -36,6 +36,7 @@ from .core import (
     VDERMGrid,
     run_VDERM,
     run_VDERM_with_tracking,
+    animate_surface_posthoc,
 )
 
 # I/O functions
@@ -85,7 +86,8 @@ __all__ = [
     'VDERMGrid',
     'run_VDERM',
     'run_VDERM_with_tracking',
-    
+    'animate_surface_posthoc',
+
     # I/O
     'write_xyz',
     'read_xyz',
@@ -126,6 +128,7 @@ if _has_visualization:
 from .core_2d import (
     VDERMGrid2D,
     run_VDERM_2d_with_tracking,
+    animate_map_posthoc,
 )
 
 # 2-D grid utilities
@@ -172,7 +175,8 @@ __all__ += [
     # 2-D classes and algorithms
     'VDERMGrid2D',
     'run_VDERM_2d_with_tracking',
-    # 2-D grid utilities
+    'animate_map_posthoc',
+# 2-D grid utilities
     'compute_grid_dimensions_2d',
     'make_initial_grid_2d',
     'print_grid_info_2d',

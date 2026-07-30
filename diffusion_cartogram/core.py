@@ -1018,7 +1018,172 @@ def run_VDERM_with_tracking(grid, surface_points,
     
     return grid
 
-    
+
+def _interpolate_field_to_points(points, grid_params, field):
+    """Interpolate a scalar field defined on the (L, M, N) grid to arbitrary points."""
+    L, M, N = grid_params['shape']
+    h = grid_params['h']
+    min_bounds = grid_params['min_bounds']
+
+    x = min_bounds[0] + np.arange(L) * h
+    y = min_bounds[1] + np.arange(M) * h
+    z = min_bounds[2] + np.arange(N) * h
+
+    interp = RegularGridInterpolator((x, y, z), field, bounds_error=False, fill_value=0)
+    return interp(points)
+
+
+def animate_surface_posthoc(grid, surface_points, n_frames=30,
+                             output_folder='vderm_posthoc_exports',
+                             initial_densities=None, tau=0.3,
+                             surface_folder='vderm_surface'):
+    """
+    Generate an approximate surface animation from a completed VDERM run
+    without re-running the (expensive) vector-field interpolation at
+    every intermediate step.
+
+    Only the initial and final surfaces are ever interpolated from the
+    grid's displacement field. Intermediate frames are produced by
+    linearly interpolating point positions (and, if provided, densities)
+    between those two surfaces along an eased timescale that starts fast
+    and decelerates (``1 - exp(-t/tau)``), which visually approximates
+    the true VDERM motion (fast initial advection, slowing as the
+    density field equalizes) without needing to know it exactly.
+
+    This is a display tool, not a physically accurate reconstruction of
+    intermediate states — see the warning printed when this function
+    runs, and use ``run_VDERM_with_tracking`` if intermediate accuracy
+    matters.
+
+    Parameters
+    ----------
+    grid : VDERMGrid
+        A grid that has already been deformed (e.g. via run_VDERM or
+        run_VDERM_with_tracking). Its current positions are treated as
+        the final state.
+    surface_points : ndarray, shape (n_points, 3)
+        Original (undeformed) surface point cloud.
+    n_frames : int, default=30
+        Number of frames to export, including the initial and final
+        frames. Must be >= 2.
+    output_folder : str, default='vderm_posthoc_exports'
+        Base directory for exports.
+    initial_densities : callable or ndarray, optional
+        Density field assigned to the grid before deformation, in the
+        same form accepted by ``VDERMGrid.set_density``: either a
+        callable ``density_func(x, y, z) -> density`` or an array of
+        shape (L, M, N). If given, per-point densities are eased from
+        this initial field to the grid's current (final) density field
+        and each frame is colored accordingly. If omitted, every frame
+        is colored using only the final density field.
+    tau : float, default=0.3
+        Time constant of the easing curve ``1 - exp(-t/tau))``, evaluated
+        over a normalized t in [0, 1] and renormalized so the curve runs
+        exactly from 0 to 1. Smaller values front-load more of the motion
+        into the earliest frames.
+    surface_folder : str, default='vderm_surface'
+        Subfolder (under output_folder) that exports are written to.
+        Matches the default subfolder expected by
+        ``animate_surface_deformation``, so the output of this function
+        can be fed directly into it.
+
+    Returns
+    -------
+    frame_paths : list of str
+        Paths to the exported .xyz files, in frame order.
+
+    Notes
+    -----
+    Exported files use the same 7-column (x y z n_x n_y n_z rho) format
+    as run_VDERM_with_tracking's surface exports, and the same
+    'surface_iteration_NNNN.xyz' / 'surface_final_iteration_NNNN.xyz'
+    naming convention, so they can be visualized with
+    animate_surface_deformation() without any extra arguments. The
+    normal-vector columns are not real per-frame velocities (none are
+    computed in this approximation) — they hold the net displacement
+    direction of each point, provided only so downstream tools that
+    expect a normals column keep working.
+
+    Examples
+    --------
+    >>> final_grid = vd.run_VDERM(grid, n_max=500)
+    >>> vd.animate_surface_posthoc(final_grid, points, n_frames=40,
+    ...                            output_folder='my_deformation_posthoc',
+    ...                            initial_densities=head_density)
+    >>> vd.animate_surface_deformation('my_deformation_posthoc')
+    """
+    print("=" * 70)
+    print("POST-HOC ANIMATION NOTICE")
+    print("=" * 70)
+    print("This post-hoc animation tool is meant for display purposes only and")
+    print("may not be faithful to the real deformation during intermediate")
+    print("steps. If you are interested in viewing the process of the real")
+    print("deformation, use the run_VDERM_with_tracking function, which is")
+    print("slower, but is guaranteed to be accurate at each frame.")
+    print("=" * 70)
+
+    if n_frames < 2:
+        raise ValueError("n_frames must be >= 2 (need at least an initial and final frame)")
+    if tau <= 0:
+        raise ValueError(f"tau must be > 0, got {tau}")
+
+    out_dir = os.path.join(output_folder, surface_folder)
+    os.makedirs(out_dir, exist_ok=True)
+
+    params = {'shape': (grid.L, grid.M, grid.N), 'h': grid.h, 'min_bounds': grid.min_bounds}
+    displacement_field = grid.get_displacement_field()
+
+    initial_surface = surface_points
+    final_surface = interpolate_to_surface(surface_points, params, displacement_field)
+    net_displacement = final_surface - initial_surface
+
+    # Eased timescale: fast at first, decelerating; renormalized to hit exactly 0 and 1
+    t = np.linspace(0.0, 1.0, n_frames)
+    ease = (1.0 - np.exp(-t / tau))
+    ease = ease / ease[-1]
+
+    final_surface_densities = interpolate_densities(surface_points, grid)
+
+    if initial_densities is not None:
+        if callable(initial_densities):
+            xs = grid.min_bounds[0] + np.arange(grid.L) * grid.h
+            ys = grid.min_bounds[1] + np.arange(grid.M) * grid.h
+            zs = grid.min_bounds[2] + np.arange(grid.N) * grid.h
+            initial_rho = np.zeros_like(grid.rho)
+            for i, x in enumerate(xs):
+                for j, y in enumerate(ys):
+                    for k, z in enumerate(zs):
+                        initial_rho[i, j, k] = initial_densities(x, y, z)
+        else:
+            initial_rho = np.asarray(initial_densities, dtype=float)
+            if initial_rho.shape != grid.rho.shape:
+                raise ValueError(
+                    f"initial_densities array shape {initial_rho.shape} must match "
+                    f"grid shape {grid.rho.shape}"
+                )
+        initial_surface_densities = _interpolate_field_to_points(surface_points, params, initial_rho)
+    else:
+        initial_surface_densities = final_surface_densities
+
+    frame_paths = []
+    for frame_idx, alpha in enumerate(ease):
+        positions_i = initial_surface + alpha * net_displacement
+        densities_i = initial_surface_densities + alpha * (final_surface_densities - initial_surface_densities)
+
+        if frame_idx == n_frames - 1:
+            filename = f'surface_final_iteration_{frame_idx:04d}.xyz'
+        else:
+            filename = f'surface_iteration_{frame_idx:04d}.xyz'
+
+        filepath = os.path.join(out_dir, filename)
+        write_xyz(filepath, positions_i, normals=net_displacement, densities=densities_i)
+        frame_paths.append(filepath)
+
+    print(f"\n{n_frames} post-hoc animation frames saved to: {out_dir}/")
+
+    return frame_paths
+
+
 def interpolate_densities(surface_points, grid):
     """
     Interpolate density values from grid to surface points.

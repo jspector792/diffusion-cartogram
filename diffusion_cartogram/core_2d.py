@@ -829,3 +829,163 @@ def run_VDERM_2d_with_tracking(
             print(f"  Map point states (x y rho): {map_folder}/")
 
     return grid
+
+
+def _interpolate_field_to_points_2d(points, grid_params, field):
+    """Interpolate a scalar field defined on the (L, M) grid to arbitrary points."""
+    L, M = grid_params['shape']
+    h = grid_params['h']
+    mb = grid_params['min_bounds']
+
+    x = mb[0] + np.arange(L) * h
+    y = mb[1] + np.arange(M) * h
+
+    interp = RegularGridInterpolator((x, y), field, bounds_error=False, fill_value=0.0)
+    return interp(points)
+
+
+def animate_map_posthoc(grid, map_points, n_frames=30,
+                         output_folder='vderm_2d_posthoc_exports',
+                         initial_densities=None, tau=0.3,
+                         map_folder='vderm_map'):
+    """
+    Generate an approximate 2-D map animation from a completed VDERM run
+    without re-running the (expensive) vector-field interpolation at
+    every intermediate step.
+
+    Mirrors animate_surface_posthoc() from core.py — only the initial and
+    final map states are ever interpolated from the grid's displacement
+    field. Intermediate frames are produced by linearly interpolating
+    point positions (and, if provided, densities) between those two
+    states along an eased timescale that starts fast and decelerates
+    (``1 - exp(-t/tau)``), approximating the true VDERM motion (fast
+    initial advection, slowing as the density field equalizes).
+
+    This is a display tool, not a physically accurate reconstruction of
+    intermediate states — see the warning printed when this function
+    runs, and use ``run_VDERM_2d_with_tracking`` if intermediate accuracy
+    matters.
+
+    Parameters
+    ----------
+    grid : VDERMGrid2D
+        A grid that has already been deformed (e.g. via run_VDERM or
+        run_VDERM_2d_with_tracking). Its current positions are treated
+        as the final state.
+    map_points : ndarray, shape (n_points, 2)
+        Original (undeformed) map point set.
+    n_frames : int, default=30
+        Number of frames to export, including the initial and final
+        frames. Must be >= 2.
+    output_folder : str, default='vderm_2d_posthoc_exports'
+        Base directory for exports.
+    initial_densities : callable or ndarray, optional
+        Density field assigned to the grid before deformation, in the
+        same form accepted by ``VDERMGrid2D.set_density``: either a
+        callable ``density_func(x, y) -> density`` or an array of shape
+        (L, M). If given, per-point densities are eased from this
+        initial field to the grid's current (final) density field and
+        each frame is colored accordingly. If omitted, frames are
+        exported without a density column.
+    tau : float, default=0.3
+        Time constant of the easing curve ``1 - exp(-t/tau)``, evaluated
+        over a normalized t in [0, 1] and renormalized so the curve runs
+        exactly from 0 to 1. Smaller values front-load more of the motion
+        into the earliest frames.
+    map_folder : str, default='vderm_map'
+        Subfolder (under output_folder) that exports are written to.
+        Matches the default subfolder expected by
+        ``animate_map_deformation_2d``, so the output of this function
+        can be fed directly into it.
+
+    Returns
+    -------
+    frame_paths : list of str
+        Paths to the exported .csv files, in frame order.
+
+    Notes
+    -----
+    Exported files use the same CSV format ('x y' or 'x y rho') and the
+    same 'map_iteration_NNNN.csv' / 'map_final_iteration_NNNN.csv' naming
+    convention as run_VDERM_2d_with_tracking's map exports, so they can be
+    visualized with animate_map_deformation_2d() without any extra
+    arguments.
+
+    Examples
+    --------
+    >>> final_grid = vd.run_VDERM(grid, n_max=500)
+    >>> vd.animate_map_posthoc(final_grid, pts, n_frames=40,
+    ...                        output_folder='my_cartogram_posthoc',
+    ...                        initial_densities=grid.rho.copy())
+    >>> vd.animate_map_deformation_2d('my_cartogram_posthoc')
+    """
+    print("=" * 70)
+    print("POST-HOC ANIMATION NOTICE")
+    print("=" * 70)
+    print("This post-hoc animation tool is meant for display purposes only and")
+    print("may not be faithful to the real deformation during intermediate")
+    print("steps. If you are interested in viewing the process of the real")
+    print("deformation, use the run_VDERM_2d_with_tracking function, which is")
+    print("slower, but is guaranteed to be accurate at each frame.")
+    print("=" * 70)
+
+    if n_frames < 2:
+        raise ValueError("n_frames must be >= 2 (need at least an initial and final frame)")
+    if tau <= 0:
+        raise ValueError(f"tau must be > 0, got {tau}")
+
+    out_dir = os.path.join(output_folder, map_folder)
+    os.makedirs(out_dir, exist_ok=True)
+
+    params = {'shape': (grid.L, grid.M), 'h': grid.h, 'min_bounds': grid.min_bounds}
+    displacement_field = grid.get_displacement_field()
+
+    initial_map = map_points
+    final_map = interpolate_to_map_2d(map_points, params, displacement_field)
+
+    # Eased timescale: fast at first, decelerating; renormalized to hit exactly 0 and 1
+    t = np.linspace(0.0, 1.0, n_frames)
+    ease = (1.0 - np.exp(-t / tau))
+    ease = ease / ease[-1]
+
+    have_densities = initial_densities is not None
+    if have_densities:
+        final_map_densities = interpolate_densities_2d(map_points, grid)
+
+        if callable(initial_densities):
+            xs = grid.min_bounds[0] + np.arange(grid.L) * grid.h
+            ys = grid.min_bounds[1] + np.arange(grid.M) * grid.h
+            initial_rho = np.zeros_like(grid.rho)
+            for i, x in enumerate(xs):
+                for j, y in enumerate(ys):
+                    initial_rho[i, j] = initial_densities(x, y)
+        else:
+            initial_rho = np.asarray(initial_densities, dtype=float)
+            if initial_rho.shape != grid.rho.shape:
+                raise ValueError(
+                    f"initial_densities array shape {initial_rho.shape} must match "
+                    f"grid shape {grid.rho.shape}"
+                )
+        initial_map_densities = _interpolate_field_to_points_2d(map_points, params, initial_rho)
+
+    frame_paths = []
+    for frame_idx, alpha in enumerate(ease):
+        positions_i = initial_map + alpha * (final_map - initial_map)
+
+        if have_densities:
+            densities_i = initial_map_densities + alpha * (final_map_densities - initial_map_densities)
+        else:
+            densities_i = None
+
+        if frame_idx == n_frames - 1:
+            filename = f'map_final_iteration_{frame_idx:04d}.csv'
+        else:
+            filename = f'map_iteration_{frame_idx:04d}.csv'
+
+        filepath = os.path.join(out_dir, filename)
+        write_csv_2d(filepath, positions_i, densities_i)
+        frame_paths.append(filepath)
+
+    print(f"\n{n_frames} post-hoc animation frames saved to: {out_dir}/")
+
+    return frame_paths
