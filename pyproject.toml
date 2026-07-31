@@ -8,7 +8,7 @@ version = "0.2.1"
 description = "Volumetric Density-Equalizing Reference Map — 3D shape deformation and 2D cartogram generation"
 readme = "README_pypi.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = {file = "LICENSE"}
 authors = [
     {name = "Jonah Spector", email = "spector.jo@northeastern.edu"}
 ]
