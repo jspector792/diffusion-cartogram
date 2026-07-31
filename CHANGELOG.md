@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.2.1] - 2026-07-31
+
+### New: Post hoc animation 
+- **`animate_surface_posthoc`** - Interpolate the final displacement field and densities to create an animation for display purposes. Faster than running with tracking but not guaranteed to be accurate at intermediate steps
+- **`animate_map_posthoc`** - Same function implemented for 2D maps
+
 ## [0.2.0] - 2026-04-29
 
 ### New: 2D VDERM Pipeline
