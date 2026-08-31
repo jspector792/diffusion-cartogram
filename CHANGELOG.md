@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.2.2] - 2026-08-31
+
+### New: Additional reconstruction options
+
+- **Added** `load_mesh_topology(mesh_path)`: loads a mesh's own vertices,
+  faces, and per-vertex normals with **no resampling**. This is the new
+  default entry point for the deformation pipeline (replaces `create_pcd` as
+  the "get me surface points" call for most users; `create_pcd` still exists
+  unchanged for anyone who wants a lighter/resampled point cloud, or as the
+  Poisson fallback's input).
+- **Modified** `export_mesh_file(filename, deformed_pcd, ...)`:
+  - New parameters: `method='none'` (new default), `original_faces=None`.
+  - `method='none'`: requires `original_faces`; if given, saves
+    `(deformed_pcd, original_faces)` directly via
+    `pymeshlab.Mesh(vertex_matrix=..., face_matrix=...)` -- no reconstruction. 
+  - If `method='none'` but `original_faces` is `None`: emits a
+    `RuntimeWarning` and **falls back to `method='poisson'`** (the prior,
+    only, behavior) automatically.
+  - `method='poisson'`: unchanged prior behavior (screened Poisson
+    reconstruction with estimated normals), reachable explicitly or via the
+    automatic fallback above.
+  - Added `method='ball_pivoting'` and `method='alpha_shape'` alongside `'none'`/  `'poisson'`. New parameters, all with defaults matching pymeshlab's own except `alpha_filtering`. `ball_radius=0.0` (0% = auto-estimated), `ball_clustering=20.0`, `ball_creasethr=90.0`, `ball_deletefaces=False`, `alpha=1.0`, `alpha_filtering='Alpha Shape'` (pymeshlab's own filter default is `'Alpha Complex'`, deliberately overridden -- `'Alpha Complex'` retains interior simplicial-complex faces, not just the outer boundary).
+  - Backward compatible: existing callers that only ever passed
+    `(filename, deformed_pcd)` keep working exactly as before, just now with
+    a printed warning nudging them toward the no-reconstruction path.
+  
+
 ## [0.2.1] - 2026-07-31
 
 ### New: Post hoc animation 

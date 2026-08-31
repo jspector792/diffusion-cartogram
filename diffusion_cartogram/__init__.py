@@ -29,7 +29,7 @@ cartogram deformation from GeoJSON / Shapefile inputs.
 >>> vd.plot_map_2d(deformed, title='Population Cartogram')
 """
 
-__version__ = '0.2.1'
+__version__ = '0.2.2'
 
 # Core VDERM classes and algorithms
 from .core import (
