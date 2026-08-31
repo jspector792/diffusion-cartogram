@@ -82,7 +82,7 @@ examples/*.mp4
 examples/*.png
 
 # paper folder (switching back to committing this)
-# paper/
+paper/
 
 # pyVDERM pointer package (artifact of rename)
 pyVDERM/
