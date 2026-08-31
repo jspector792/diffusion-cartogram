@@ -236,10 +236,10 @@ def animate_grid_deformation(export_folder='vderm_exports',
 
 
 def animate_surface_deformation(export_folder='vderm_exports',
-                                subfolder='vderm_surface', 
+                                subfolder='vderm_surface',
                                 output_file='surface_animation.gif',
                                 fps=5,
-                                subsample=5000,
+                                subsample=None,
                                 show_normals=False,
                                 alpha=0.6,
                                 figsize=(10, 8)):
@@ -256,13 +256,16 @@ def animate_surface_deformation(export_folder='vderm_exports',
         Output animation filename (.gif or .mp4)
     fps : int, default=5
         Frames per second
-    subsample : int or None, default=5000
-        Subsample to this many points for faster rendering
+    subsample : int or None, default=None
+        If given, subsample to this many points for faster rendering. Default
+        is no subsampling -- use every exported point, for the densest
+        (most informative) animation. Set this if rendering is too slow on a
+        very large point cloud.
     show_normals : bool, default=False
         If True, draw normal vectors (slower, may clutter visualization)
     figsize : tuple, default=(10, 8)
         Figure size in inches
-    
+
     Returns
     -------
     None

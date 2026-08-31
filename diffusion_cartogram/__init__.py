@@ -44,6 +44,7 @@ from .core import (
     write_xyz,
     read_xyz,
     create_pcd,
+    load_mesh_topology,
     export_mesh_file,
     export_mesh_vtk,
 )
@@ -92,6 +93,7 @@ __all__ = [
     'write_xyz',
     'read_xyz',
     'create_pcd',
+    'load_mesh_topology',
     'export_mesh_file',
     'export_mesh_vtk',
     

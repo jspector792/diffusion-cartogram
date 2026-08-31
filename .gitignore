@@ -64,6 +64,7 @@ examples/vderm_exports/
 examples/vderm_2d_exports/
 examples/my_deformation/
 examples/paraview*/
+applications/
 
 # Generated CSV outputs (2D pipeline — lite and geo workflows)
 examples/*.csv

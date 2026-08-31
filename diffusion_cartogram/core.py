@@ -2,6 +2,7 @@ import numpy as np
 from scipy import interpolate
 from tqdm import tqdm
 import os
+import warnings
 from scipy.interpolate import RegularGridInterpolator, NearestNDInterpolator
 try:
     import pymeshlab as ml
@@ -51,10 +52,57 @@ def create_pcd(mesh_path, n_pts=25_000, sampling_method='poisson'):
     current_mesh = ms.current_mesh()
     out = current_mesh.vertex_matrix()
     norms = current_mesh.vertex_normal_matrix()
-    
+
     return out, norms
-    
-            
+
+
+def load_mesh_topology(mesh_path):
+    """
+    Load a mesh's own vertices, faces, and per-vertex normals directly, with
+    no resampling -- unlike create_pcd, which generates an entirely new point
+    cloud unrelated to the mesh's actual vertex/face indices.
+
+    This is the entry point for the "no reconstruction" deformation pipeline:
+    push the returned `vertices` through interpolate_to_surface exactly as you
+    would create_pcd's point cloud, then pass the (still index-aligned)
+    deformed vertices and this function's `faces` to
+    export_mesh_file(..., method='none', original_faces=faces) to export with
+    the source mesh's exact topology preserved -- no reconstruction, and
+    therefore no risk of the reconstruction artifacts (holes, non-manifold
+    surfaces) that Poisson/ball-pivoting/alpha-shape can produce on sparse or
+    thin geometry.
+
+    Parameters
+    ----------
+    mesh_path : str
+        mesh file path
+
+    Returns
+    -------
+    vertices : ndarray, shape (n_verts, 3)
+        Vertex positions [x, y, z], in the mesh's own vertex order.
+    faces : ndarray, shape (n_faces, 3)
+        Triangle vertex-index triples, referencing rows of `vertices`.
+    normals : ndarray, shape (n_verts, 3)
+        Per-vertex normal vectors, in the same order as `vertices`.
+    """
+    _require_pymeshlab('load_mesh_topology')
+
+    ms = ml.MeshSet()
+    ms.load_new_mesh(mesh_path)
+    ms.compute_normal_per_vertex()
+
+    current_mesh = ms.current_mesh()
+    vertices = current_mesh.vertex_matrix()
+    faces = current_mesh.face_matrix()
+    normals = current_mesh.vertex_normal_matrix()
+    norm_len = np.linalg.norm(normals, axis=1, keepdims=True)
+    norm_len[norm_len == 0] = 1
+    normals = normals / norm_len
+
+    return vertices, faces, normals
+
+
 def write_xyz(filepath, positions, normals=None, densities=None):
     """
     Write grid positions (and optionally normal vectors and densities) to space-delimited .xyz file.
@@ -1329,80 +1377,207 @@ def interpolate_to_surface(surface_points, grid_params, displacement_field):
     
     return surface_points + interpolated_displacement
 
-def export_mesh_file(filename, deformed_pcd, depth=8, fulldepth=5, scale=1.1):
+def export_mesh_file(filename, deformed_pcd, method='none', original_faces=None,
+                      depth=8, fulldepth=5, scale=1.1,
+                      ball_radius=0.0, ball_clustering=20.0, ball_creasethr=90.0,
+                      ball_deletefaces=False,
+                      alpha=1.0, alpha_filtering='Alpha Shape'):
     """
-    Creates and exports a Poisson mesh from a deformed point cloud.
-    
-    Normals are automatically estimated from the deformed point cloud geometry
-    using local neighborhood analysis, which is more accurate for deformed surfaces
-    than using original normals.
-    
+    Exports a deformed point cloud/mesh to file, either by reusing known mesh
+    topology directly (default) or by reconstructing a surface from scratch.
+
     Parameters
     ----------
     filename : str
         Output file path (.ply, .stl, .obj, .off, or .gltf/.glb)
     deformed_pcd : ndarray, shape (n_points, 3)
-        Deformed point cloud to remesh
+        Deformed point positions to export.
+    method : str, default='none'
+        'none' -- No reconstruction: save `deformed_pcd` directly with
+            `original_faces` as its triangle connectivity. Requires
+            `original_faces` (see below); if omitted, falls back to
+            method='poisson' automatically (with a warning). Guarantees the
+            same topology/watertightness as the source mesh, since nothing is
+            being reconstructed -- just moving known vertices. Use this when
+            `deformed_pcd` is the deformed version of a mesh's own vertices,
+            e.g. from load_mesh_topology() pushed through
+            interpolate_to_surface().
+
+        The remaining methods are all genuine surface-*reconstruction*
+        fallbacks, only meaningful when `original_faces` isn't available
+        (e.g. `deformed_pcd` came from create_pcd's resampling, or some other
+        point source with no known mesh behind it). All three can leave holes
+        or non-manifold regions on sparse or thin (e.g. wireframe) geometry --
+        prefer method='none' whenever `original_faces` is available, and treat
+        these as a last resort, trying more than one if the first doesn't
+        give a usable result on your specific point cloud:
+
+        'poisson' -- Screened Poisson surface reconstruction, with normals
+            estimated from local neighborhood geometry. Tends to over-smooth
+            and can bridge/merge separate thin features that are close
+            together, but usually produces a closed (watertight) surface even
+            from imperfect data.
+        'ball_pivoting' -- Rolls a virtual ball of radius `ball_radius` over
+            the (normal-estimated) point cloud, adding a triangle everywhere
+            it touches 3 points simultaneously. Preserves sharp features
+            better than Poisson, but requires fairly uniform point density --
+            it leaves holes wherever the ball can't reach (e.g. sparse
+            regions, or thin rods meeting at sharp angles), so it is *not*
+            guaranteed watertight.
+        'alpha_shape' -- Filters the point cloud's Delaunay triangulation down
+            to the faces within `alpha` of the input points (see `alpha` and
+            `alpha_filtering` below). Purely geometric (no normal estimation
+            needed), deterministic, but similarly sensitive to uneven point
+            density and also not guaranteed watertight.
+    original_faces : ndarray, shape (n_faces, 3), optional
+        Required when method='none'. Triangle vertex-index triples, referencing
+        rows of `deformed_pcd` by index -- i.e. `deformed_pcd` must still be in
+        the same vertex order these faces were defined against.
     depth : int, default=8
-        Poisson reconstruction octree depth (higher = more detail)
+        (method='poisson' only) Poisson reconstruction octree depth (higher = more detail)
     fulldepth : int, default=5
-        Depth below which octree will be complete
+        (method='poisson' only) Depth below which octree will be complete
     scale : float, default=1.1
-        Ratio between reconstruction cube diameter and samples' bounding cube diameter
-    
+        (method='poisson' only) Ratio between reconstruction cube diameter and samples' bounding cube diameter
+    ball_radius : float, default=0.0
+        (method='ball_pivoting' only) Pivoting ball radius, as a percentage of
+        the point cloud's bounding-box diagonal. 0.0 asks pymeshlab to
+        auto-estimate a radius from the point cloud's own density.
+    ball_clustering : float, default=20.0
+        (method='ball_pivoting' only) Percentage of `ball_radius` used as a
+        clustering threshold -- points closer together than this are treated
+        as a single point during reconstruction (reduces redundant triangles).
+    ball_creasethr : float, default=90.0
+        (method='ball_pivoting' only) Angle (degrees) beyond which an edge is
+        treated as a crease and not smoothed over.
+    ball_deletefaces : bool, default=False
+        (method='ball_pivoting' only) If True, only add points to the mesh
+        without generating faces (rarely useful; kept for parity with the
+        underlying pymeshlab filter).
+    alpha : float, default=1.0
+        (method='alpha_shape' only) Alpha value, as a percentage of the point
+        cloud's bounding-box diagonal. Larger values include more/coarser
+        faces; smaller values hew closer to the points themselves (and more
+        readily leave holes).
+    alpha_filtering : str, default='Alpha Shape'
+        (method='alpha_shape' only) 'Alpha Shape' keeps only the outer
+        boundary surface (what you almost always want for a printable mesh);
+        'Alpha Complex' also keeps interior simplicial-complex faces, which
+        tends to produce a much larger, messier face count for the same
+        input. (pymeshlab's own filter default is 'Alpha Complex' --
+        deliberately overridden here.)
+
     Returns
     -------
     result_mesh : pymeshlab Mesh
-        The reconstructed mesh object
-    
+        The exported mesh object (topology reused as-is for method='none';
+        reconstructed for the other methods).
+
     Notes
     -----
     Poisson reconstruction default values from:
     https://www.cs.jhu.edu/~misha/Code/PoissonRecon/Version8.0/
-    
-    Normal estimation uses k=20 nearest neighbors with 2 smoothing iterations.
-    Adjust these in the code if needed for your specific geometry.
+
+    Normal estimation (method='poisson'/'ball_pivoting') uses k=20 nearest
+    neighbors with 2 smoothing iterations. Adjust these in the code if needed
+    for your specific geometry.
 
     macOS + conda users may encounter an OpenMP conflict (OMP: Error #15) when
     this function is called, due to pymeshlab's bundled libomp conflicting with
     conda-forge's numpy/scipy. See the Known Issues section of the README for
-    the fix. 
-    
+    the fix.
+
     Examples
     --------
-    >>> # Basic usage
-    >>> mesh = export_mesh_file('output.stl', deformed_points)
-    
-    >>> # Higher quality reconstruction
-    >>> mesh = export_mesh_file('output.ply', deformed_points, depth=10)
+    >>> # Default: no reconstruction, reuse the source mesh's own topology
+    >>> verts, faces, normals = load_mesh_topology('mesh.stl')
+    >>> deformed = interpolate_to_surface(verts, grid_params, displacement_field)
+    >>> mesh = export_mesh_file('output.stl', deformed, original_faces=faces)
+
+    >>> # Reconstruction fallbacks, for when original_faces isn't available
+    >>> mesh = export_mesh_file('output.stl', deformed_points, method='poisson')
+    >>> mesh = export_mesh_file('output.stl', deformed_points, method='ball_pivoting', ball_radius=2.0)
+    >>> mesh = export_mesh_file('output.stl', deformed_points, method='alpha_shape', alpha=2.0)
     """
-    _require_pymeshlab('create_pcd')
-    
-    # Create MeshSet and add point cloud
-    ms = ml.MeshSet()
-    point_cloud_mesh = ml.Mesh(vertex_matrix=deformed_pcd)
-    ms.add_mesh(point_cloud_mesh)
-    
-    # Estimate normals from local geometry of deformed point cloud
-    ms.compute_normal_for_point_clouds(k=20, smoothiter=2)
-    
-    # Perform Poisson surface reconstruction using estimated normals
-    ms.generate_surface_reconstruction_screened_poisson(
-        depth=depth,
-        fulldepth=fulldepth,
-        scale=scale
+    _require_pymeshlab('export_mesh_file')
+
+    if method == 'none' and original_faces is None:
+        warnings.warn(
+            "export_mesh_file(method='none') requires original_faces; "
+            "falling back to method='poisson' (surface reconstruction from "
+            "the point cloud, no known topology to reuse).",
+            RuntimeWarning,
+        )
+        method = 'poisson'
+
+    if method == 'none':
+        ms = ml.MeshSet()
+        ms.add_mesh(ml.Mesh(
+            vertex_matrix=np.asarray(deformed_pcd, dtype=float),
+            face_matrix=np.asarray(original_faces, dtype=np.int32),
+        ))
+        ms.save_current_mesh(filename)
+        return ms.current_mesh()
+
+    if method == 'poisson':
+        # Create MeshSet and add point cloud
+        ms = ml.MeshSet()
+        point_cloud_mesh = ml.Mesh(vertex_matrix=deformed_pcd)
+        ms.add_mesh(point_cloud_mesh)
+
+        # Estimate normals from local geometry of deformed point cloud
+        ms.compute_normal_for_point_clouds(k=20, smoothiter=2)
+
+        # Perform Poisson surface reconstruction using estimated normals
+        ms.generate_surface_reconstruction_screened_poisson(
+            depth=depth,
+            fulldepth=fulldepth,
+            scale=scale
+        )
+
+        # Compute normals for the reconstructed mesh (for smooth rendering)
+        ms.compute_normal_for_point_clouds()
+
+        # Save the mesh to file
+        ms.save_current_mesh(filename)
+
+        # Return the mesh object
+        return ms.current_mesh()
+
+    if method == 'ball_pivoting':
+        ms = ml.MeshSet()
+        ms.add_mesh(ml.Mesh(vertex_matrix=deformed_pcd))
+
+        # Ball pivoting needs oriented normals, same as Poisson
+        ms.compute_normal_for_point_clouds(k=20, smoothiter=2)
+
+        ms.generate_surface_reconstruction_ball_pivoting(
+            ballradius=ml.PercentageValue(ball_radius),
+            clustering=ball_clustering,
+            creasethr=ball_creasethr,
+            deletefaces=ball_deletefaces,
+        )
+
+        ms.save_current_mesh(filename)
+        return ms.current_mesh()
+
+    if method == 'alpha_shape':
+        ms = ml.MeshSet()
+        ms.add_mesh(ml.Mesh(vertex_matrix=deformed_pcd))
+
+        # Purely geometric (Delaunay + circumradius) -- no normals needed
+        ms.generate_alpha_shape(
+            alpha=ml.PercentageValue(alpha),
+            filtering=alpha_filtering,
+        )
+
+        ms.save_current_mesh(filename)
+        return ms.current_mesh()
+
+    raise ValueError(
+        f"Unknown method {method!r}; expected 'none', 'poisson', "
+        f"'ball_pivoting', or 'alpha_shape'"
     )
-    
-    # Compute normals for the reconstructed mesh (for smooth rendering)
-    ms.compute_normal_for_point_clouds()
-    
-    # Save the mesh to file
-    ms.save_current_mesh(filename)
-    
-    # Return the mesh object
-    result_mesh = ms.current_mesh()
-    
-    return result_mesh
     
 def export_mesh_vtk(filepath, deformed_pcd, densities, depth=8):
     """
