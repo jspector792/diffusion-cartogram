@@ -254,7 +254,7 @@ And optionally, this implementation:
 ```bibtex
 @software{vderm2026,
   title={diffusion-cartogram: A Python package for diffusion deformations in 2 and 3 dimensions},
-  author={Jonah Spector and Albert-László Barabási},
+  author={Jonah Spector},
   year={2026},
   url={https://github.com/jspector792/diffusion-cartogram}
 }
